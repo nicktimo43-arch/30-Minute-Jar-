@@ -8,6 +8,7 @@ import PauseOverlay from './components/PauseOverlay';
 
 const TOTAL_TIME = 30 * 60; // 30 minutes in seconds
 const TASKS_STORAGE_KEY = 'focusJarTasks';
+const TIMER_STATE_STORAGE_KEY = 'focusJarTimerState';
 
 export default function App(): React.ReactElement {
   const [tasks, setTasks] = useState<Task[]>(() => {
@@ -27,12 +28,78 @@ export default function App(): React.ReactElement {
   const [activeTask, setActiveTask] = useState<ActiveTask | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
   
-  // State for tracking the actual start/end time including pauses
   const [startTime, setStartTime] = useState<Date | null>(null);
   const [endTime, setEndTime] = useState<Date | null>(null);
   const [pauseStartTime, setPauseStartTime] = useState<number | null>(null);
-  const [totalPausedDuration, setTotalPausedDuration] = useState(0); // in milliseconds
+  const [totalPausedDuration, setTotalPausedDuration] = useState(0);
 
+  // Load timer state from localStorage on initial mount
+  useEffect(() => {
+    try {
+      const savedStateJSON = window.localStorage.getItem(TIMER_STATE_STORAGE_KEY);
+      if (savedStateJSON) {
+        const savedState = JSON.parse(savedStateJSON);
+
+        if (savedState.timerState === 'idle') {
+          window.localStorage.removeItem(TIMER_STATE_STORAGE_KEY);
+          return;
+        }
+
+        const rehydratedEndTime = savedState.endTime ? new Date(savedState.endTime) : null;
+
+        if (rehydratedEndTime && rehydratedEndTime.getTime() < Date.now()) {
+          // Timer finished while the tab was closed. Complete the task.
+          if (savedState.activeTask) {
+            setTasks((prevTasks) => [...prevTasks, { id: Date.now(), type: savedState.activeTask.type, text: savedState.activeTask.text }]);
+          }
+          window.localStorage.removeItem(TIMER_STATE_STORAGE_KEY);
+        } else {
+          // Restore the timer state
+          const rehydratedStartTime = savedState.startTime ? new Date(savedState.startTime) : null;
+          setActiveTask(savedState.activeTask);
+          setTimerState(savedState.timerState);
+          setStartTime(rehydratedStartTime);
+          setEndTime(rehydratedEndTime);
+          setTotalPausedDuration(savedState.totalPausedDuration);
+          setPauseStartTime(savedState.pauseStartTime);
+
+          if (savedState.timerState === 'running' && rehydratedEndTime) {
+            const newTimeRemaining = Math.max(0, Math.round((rehydratedEndTime.getTime() - Date.now()) / 1000));
+            setTimeRemaining(newTimeRemaining);
+          } else { // State was 'paused'
+            setTimeRemaining(savedState.timeRemaining);
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Failed to load timer state:", error);
+      window.localStorage.removeItem(TIMER_STATE_STORAGE_KEY);
+    }
+  }, [setTasks]); // Run only once on mount, setTasks is a stable function
+
+  // Save timer state to localStorage whenever it changes
+  useEffect(() => {
+    if (timerState === 'idle' || !activeTask) {
+      window.localStorage.removeItem(TIMER_STATE_STORAGE_KEY);
+      return;
+    }
+
+    const stateToSave = {
+      timerState,
+      timeRemaining,
+      activeTask,
+      startTime: startTime?.toISOString(),
+      endTime: endTime?.toISOString(),
+      pauseStartTime,
+      totalPausedDuration,
+    };
+
+    try {
+      window.localStorage.setItem(TIMER_STATE_STORAGE_KEY, JSON.stringify(stateToSave));
+    } catch (error) {
+      console.error("Failed to save timer state:", error);
+    }
+  }, [timerState, timeRemaining, activeTask, startTime, endTime, pauseStartTime, totalPausedDuration]);
 
   useEffect(() => {
     try {
@@ -117,7 +184,7 @@ export default function App(): React.ReactElement {
     }
     
     return () => clearInterval(interval);
-  }, [timerState, activeTask, resetToIdle]);
+  }, [timerState, activeTask, resetToIdle, setTasks]);
 
 
   const memoizedStats = useMemo(() => <Statistics tasks={tasks} />, [tasks]);
