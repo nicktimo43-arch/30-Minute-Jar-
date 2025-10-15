@@ -1,0 +1,22 @@
+{
+  "short_name": "Focus Jar",
+  "name": "Focus Jar",
+  "description": "A task management app that uses a jar and sticky notes metaphor to help users focus on tasks for 30-minute intervals.",
+  "icons": [
+    {
+      "src": "/icon-192x192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#f1f5f9",
+  "display": "standalone",
+  "scope": "/",
+  "theme_color": "#f1f5f9"
+}

@@ -1,0 +1,5 @@
+{
+  "name": "Focus Jar",
+  "description": "A task management app that uses a jar and sticky notes metaphor to help users focus on tasks for 30-minute intervals. Completed tasks are visually represented as colored balls in a jar.",
+  "requestFramePermissions": []
+}
