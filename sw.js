@@ -1,4 +1,4 @@
-const CACHE_NAME = 'focus-jar-cache-v5';
+const CACHE_NAME = 'focus-jar-cache-v6';
 const urlsToCache = [
   // Core files
   '/',
