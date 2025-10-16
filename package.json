@@ -4,5 +4,9 @@
   "description": "A task management app that uses a jar and sticky notes metaphor to help users focus.",
   "dependencies": {
     "@google/genai": "^0.15.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.2",
+    "typescript": "^5.4.5"
   }
 }

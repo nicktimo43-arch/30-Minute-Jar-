@@ -1,4 +1,4 @@
-const CACHE_NAME = 'focus-jar-cache-v3';
+const CACHE_NAME = 'focus-jar-cache-v4';
 const urlsToCache = [
   // Core files
   '/',
@@ -16,6 +16,9 @@ const urlsToCache = [
   '/components/TimerScreen.tsx',
   '/components/PixelPlant.tsx',
   '/components/SyncModal.tsx',
+  '/components/QrCodeModal.tsx',
+  '/components/QrScanner.tsx',
+  '/components/WeeklyHistoryModal.tsx',
   
   // PWA assets
   '/manifest.json',
@@ -30,7 +33,9 @@ self.addEventListener('install', event => {
     caches.open(CACHE_NAME)
       .then(cache => {
         console.log('Opened cache');
-        return cache.addAll(urlsToCache);
+        // Use { cache: 'reload' } to ensure we are getting fresh files from the network
+        const requests = urlsToCache.map(url => new Request(url, { cache: 'reload' }));
+        return cache.addAll(requests);
       })
   );
 });
