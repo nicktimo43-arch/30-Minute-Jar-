@@ -6,13 +6,15 @@ const urlsToCache = [
   '/index.tsx',
   '/App.tsx',
   '/types.ts',
+  '/plantGenerator.ts',
   
   // Components
-  '/components/Jar.tsx',
   '/components/MainTaskNote.tsx',
   '/components/NextUp.tsx',
   '/components/TaskPlanner.tsx',
   '/components/TimerScreen.tsx',
+  '/components/PixelPlant.tsx',
+  '/components/SyncModal.tsx',
   
   // PWA assets
   '/manifest.json',
