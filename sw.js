@@ -7,6 +7,7 @@ const urlsToCache = [
   '/App.tsx',
   '/types.ts',
   '/plantGenerator.ts',
+  '/lib/ai.ts',
   
   // Components
   '/components/MainTaskNote.tsx',

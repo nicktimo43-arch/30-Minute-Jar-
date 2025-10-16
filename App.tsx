@@ -371,6 +371,7 @@ export default function App(): React.ReactElement {
               initialTasks={plannedTasks}
               onSavePlan={handleSavePlan}
               onCancelEdit={plannedTasks.length > 0 && isEditingPlan ? handleCancelEdit : undefined}
+              mainTask={mainTask}
             />
           ) : (
             <NextUp

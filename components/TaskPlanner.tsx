@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { NoteType, Task } from '../types';
+import { getTaskCorrection } from '../lib/ai';
 
 interface TaskPlannerProps {
   initialTasks?: Task[];
   onSavePlan: (tasks: Task[]) => void;
   onCancelEdit?: () => void;
+  mainTask: string;
 }
 
 const RemoveIcon = () => (
@@ -14,17 +16,42 @@ const RemoveIcon = () => (
   </svg>
 );
 
-const TaskPlanner: React.FC<TaskPlannerProps> = ({ initialTasks, onSavePlan, onCancelEdit }) => {
+const TaskPlanner: React.FC<TaskPlannerProps> = ({ initialTasks, onSavePlan, onCancelEdit, mainTask }) => {
   const [tasks, setTasks] = useState<Task[]>(initialTasks || []);
   const [currentText, setCurrentText] = useState('');
+  const [isLoadingAi, setIsLoadingAi] = useState(false);
+  const [aiFeedback, setAiFeedback] = useState<string | null>(null);
 
   const nextTaskType: NoteType = tasks.length % 2 === 0 ? 'input' : 'output';
 
-  const handleAddTask = (e: React.FormEvent) => {
+  const handleAddTask = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (currentText.trim()) {
-      setTasks([...tasks, { text: currentText.trim(), type: nextTaskType, id: Date.now() }]);
-      setCurrentText('');
+    if (!currentText.trim() || isLoadingAi) return;
+
+    if (!mainTask.trim()) {
+        setAiFeedback("Please set a High-Priority Task before adding session tasks.");
+        return;
+    }
+
+    setIsLoadingAi(true);
+    setAiFeedback(null);
+
+    try {
+        const result = await getTaskCorrection(mainTask, currentText.trim(), nextTaskType);
+        
+        if (result.isRelevant) {
+            setTasks([...tasks, { text: result.suggestedText, type: nextTaskType, id: Date.now() }]);
+            setCurrentText('');
+            setAiFeedback(null); // Clear feedback on success
+        } else {
+            setAiFeedback(result.feedback);
+        }
+
+    } catch (error) {
+        console.error("AI feedback error:", error);
+        setAiFeedback("An error occurred. Could not get AI feedback.");
+    } finally {
+        setIsLoadingAi(false);
     }
   };
 
@@ -62,7 +89,7 @@ const TaskPlanner: React.FC<TaskPlannerProps> = ({ initialTasks, onSavePlan, onC
               <span className="font-medium text-xs uppercase w-16 text-gray-500">
                 {task.type === 'input' ? 'Consume' : 'Produce'}
               </span>
-              <span className="flex-1 mx-2 truncate text-black">{task.text}</span>
+              <span className="flex-1 mx-2 text-black">{task.text}</span>
               <button onClick={() => handleRemoveTask(task.id)} className="text-gray-500 hover:text-red-500 p-1 rounded-full transition-colors">
                 <RemoveIcon />
               </button>
@@ -75,16 +102,21 @@ const TaskPlanner: React.FC<TaskPlannerProps> = ({ initialTasks, onSavePlan, onC
         <label className="font-medium text-sm text-gray-600">Next: <span className="text-black font-semibold">{noteTitle}</span></label>
         <textarea
           value={currentText}
-          onChange={(e) => setCurrentText(e.target.value)}
+          onChange={(e) => {
+            setCurrentText(e.target.value);
+            if (aiFeedback) setAiFeedback(null);
+          }}
           placeholder={placeholderText}
           className="w-full bg-white rounded-md resize-none focus:outline-none p-2 font-sans text-black border border-gray-400 focus:border-black focus:ring-1 focus:ring-black"
           rows={2}
           aria-label="New task input"
+          disabled={isLoadingAi}
         />
-        <button type="submit" className={`w-full px-4 py-1.5 rounded-md font-semibold text-sm transition-all duration-300 ${currentText.trim() ? 'bg-black text-white' : 'bg-gray-200 text-gray-500 cursor-not-allowed'}`} disabled={!currentText.trim()}>
-          Add Task
+        <button type="submit" className={`w-full px-4 py-1.5 rounded-md font-semibold text-sm transition-all duration-300 ${currentText.trim() ? 'bg-black text-white' : 'bg-gray-200 text-gray-500 cursor-not-allowed'}`} disabled={!currentText.trim() || isLoadingAi}>
+          {isLoadingAi ? 'Analyzing...' : 'Add Task'}
         </button>
       </form>
+      {aiFeedback && <p className="text-xs text-red-500 mt-1 text-center">{aiFeedback}</p>}
       
       <div className="flex items-center space-x-2">
         <button

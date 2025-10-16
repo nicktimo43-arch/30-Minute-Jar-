@@ -20,15 +20,15 @@ const PixelPlant: React.FC<PixelPlantProps> = ({ growth, plantStyle }) => {
   
   // 1. Draw Stem
   for (let i = 0; i < stemHeight; i++) {
-    plantPixels.push(<rect key={`stem-${i}`} x={stemX} y={83 - i * PIXEL_SIZE} width={PIXEL_SIZE} height={PIXEL_SIZE} fill="black" />);
+    plantPixels.push(<rect key={`stem-${i}`} x={stemX} y={93 - i * PIXEL_SIZE} width={PIXEL_SIZE} height={PIXEL_SIZE} fill="black" />);
   }
 
   // 2. Draw Leaves
-  const numLeaves = Math.floor(effectiveGrowth / 7); // A new leaf pair roughly every 14 tasks
+  const numLeaves = Math.floor(effectiveGrowth / 7); // A new leaf pair roughly every 7 tasks
   const { leafShape } = plantStyle;
   if (leafShape && leafShape.length > 0 && leafShape[0].length > 0) {
       for (let i = 0; i < numLeaves; i++) {
-          const leafY = 78 - (i * 4 * PIXEL_SIZE);
+          const leafY = 88 - (i * 4 * PIXEL_SIZE);
           const flip = i % 2 !== 0;
           const leafX = flip ? stemX - (leafShape[0].length * PIXEL_SIZE) : stemX + PIXEL_SIZE;
           
@@ -49,7 +49,7 @@ const PixelPlant: React.FC<PixelPlantProps> = ({ growth, plantStyle }) => {
   // 3. Draw Flower
   const { flowerShape } = plantStyle;
   if (effectiveGrowth >= MAX_GROWTH && flowerShape) {
-    const flowerY = 83 - stemHeight * PIXEL_SIZE - (flowerShape.length * PIXEL_SIZE);
+    const flowerY = 93 - stemHeight * PIXEL_SIZE - (flowerShape.length * PIXEL_SIZE);
     const flowerX = stemX - Math.floor(flowerShape[0].length / 2) * PIXEL_SIZE;
     flowerShape.forEach((row, y) => {
       row.forEach((pixel, x) => {
@@ -59,7 +59,7 @@ const PixelPlant: React.FC<PixelPlantProps> = ({ growth, plantStyle }) => {
       });
     });
   } else if (stemHeight > 1) { // Bud
-     const budY = 83 - (stemHeight - 1) * PIXEL_SIZE;
+     const budY = 93 - (stemHeight - 1) * PIXEL_SIZE;
      plantPixels.push(<rect key="bud" x={stemX - PIXEL_SIZE} y={budY} width={PIXEL_SIZE*2} height={PIXEL_SIZE} fill="black" />);
      plantPixels.push(<rect key="bud2" x={stemX} y={budY - PIXEL_SIZE} width={PIXEL_SIZE} height={PIXEL_SIZE} fill="black" />);
 
@@ -72,24 +72,15 @@ const PixelPlant: React.FC<PixelPlantProps> = ({ growth, plantStyle }) => {
       <g>{plantPixels}</g>
 
       {/* Pot */}
-      <g stroke="black" fill="none" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        {/* Pot Body - Fill with white to hide the plant stem inside the pot */}
-        <path d="M 20 118 L 80 118 L 88 85 L 12 85 Z" fill="white" />
-        
-        {/* Pot Rim */}
-        <path d="M 12 85 Q 50 75 88 85" />
-        <path d="M 12 85 Q 50 95 88 85" fill="white" />
+      <g stroke="black" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        {/* Main pot body path for filling - hides the stem inside */}
+        <path d="M25,118 C15,118 15,95 28,95 A 22,8 0 0 0 72,95 C85,95 85,118 75,118 Z" fill="white" />
 
-        {/* Pot Text */}
-        <text x="50" y="98" fontFamily="monospace" fontSize="6" textAnchor="middle" fill="black" stroke="none">
-          EACH TASK
-        </text>
-        <text x="50" y="105" fontFamily="monospace" fontSize="6" textAnchor="middle" fill="black" stroke="none">
-          WILL GROW
-        </text>
-        <text x="50" y="112" fontFamily="monospace" fontSize="6" textAnchor="middle" fill="black" stroke="none">
-          ME
-        </text>
+        {/* Pot Outline */}
+        <path d="M25,118 L75,118" /> {/* Bottom */}
+        <path d="M25,118 C15,118 15,95 28,95" /> {/* Left Side */}
+        <path d="M75,118 C85,118 85,95 72,95" /> {/* Right Side */}
+        <path d="M28,95 A 22,8 0 0 0 72,95" /> {/* Front Rim */}
       </g>
     </svg>
   );
