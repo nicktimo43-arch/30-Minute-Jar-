@@ -1,4 +1,4 @@
-const CACHE_NAME = 'focus-jar-cache-v4';
+const CACHE_NAME = 'focus-jar-cache-v5';
 const urlsToCache = [
   // Core files
   '/',
@@ -7,7 +7,6 @@ const urlsToCache = [
   '/App.tsx',
   '/types.ts',
   '/plantGenerator.ts',
-  '/lib/ai.ts',
   
   // Components
   '/components/MainTaskNote.tsx',

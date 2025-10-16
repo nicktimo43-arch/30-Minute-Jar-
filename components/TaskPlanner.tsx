@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { NoteType, Task } from '../types';
-import { getTaskCorrection } from '../lib/ai';
 
 interface TaskPlannerProps {
   initialTasks?: Task[];
@@ -19,40 +18,15 @@ const RemoveIcon = () => (
 const TaskPlanner: React.FC<TaskPlannerProps> = ({ initialTasks, onSavePlan, onCancelEdit, mainTask }) => {
   const [tasks, setTasks] = useState<Task[]>(initialTasks || []);
   const [currentText, setCurrentText] = useState('');
-  const [isLoadingAi, setIsLoadingAi] = useState(false);
-  const [aiFeedback, setAiFeedback] = useState<string | null>(null);
 
   const nextTaskType: NoteType = tasks.length % 2 === 0 ? 'input' : 'output';
 
-  const handleAddTask = async (e: React.FormEvent) => {
+  const handleAddTask = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentText.trim() || isLoadingAi) return;
+    if (!currentText.trim()) return;
 
-    if (!mainTask.trim()) {
-        setAiFeedback("Please set a High-Priority Task before adding session tasks.");
-        return;
-    }
-
-    setIsLoadingAi(true);
-    setAiFeedback(null);
-
-    try {
-        const result = await getTaskCorrection(mainTask, currentText.trim(), nextTaskType);
-        
-        if (result.isRelevant) {
-            setTasks([...tasks, { text: result.suggestedText, type: nextTaskType, id: Date.now() }]);
-            setCurrentText('');
-            setAiFeedback(null); // Clear feedback on success
-        } else {
-            setAiFeedback(result.feedback);
-        }
-
-    } catch (error) {
-        console.error("AI feedback error:", error);
-        setAiFeedback("An error occurred. Could not get AI feedback.");
-    } finally {
-        setIsLoadingAi(false);
-    }
+    setTasks([...tasks, { text: currentText.trim(), type: nextTaskType, id: Date.now() }]);
+    setCurrentText('');
   };
 
   const handleRemoveTask = (idToRemove: number) => {
@@ -102,21 +76,16 @@ const TaskPlanner: React.FC<TaskPlannerProps> = ({ initialTasks, onSavePlan, onC
         <label className="font-medium text-sm text-gray-600">Next: <span className="text-black font-semibold">{noteTitle}</span></label>
         <textarea
           value={currentText}
-          onChange={(e) => {
-            setCurrentText(e.target.value);
-            if (aiFeedback) setAiFeedback(null);
-          }}
+          onChange={(e) => setCurrentText(e.target.value)}
           placeholder={placeholderText}
           className="w-full bg-white rounded-md resize-none focus:outline-none p-2 font-sans text-black border border-gray-400 focus:border-black focus:ring-1 focus:ring-black"
           rows={2}
           aria-label="New task input"
-          disabled={isLoadingAi}
         />
-        <button type="submit" className={`w-full px-4 py-1.5 rounded-md font-semibold text-sm transition-all duration-300 ${currentText.trim() ? 'bg-black text-white' : 'bg-gray-200 text-gray-500 cursor-not-allowed'}`} disabled={!currentText.trim() || isLoadingAi}>
-          {isLoadingAi ? 'Analyzing...' : 'Add Task'}
+        <button type="submit" className={`w-full px-4 py-1.5 rounded-md font-semibold text-sm transition-all duration-300 ${currentText.trim() ? 'bg-black text-white' : 'bg-gray-200 text-gray-500 cursor-not-allowed'}`} disabled={!currentText.trim()}>
+          Add Task
         </button>
       </form>
-      {aiFeedback && <p className="text-xs text-red-500 mt-1 text-center">{aiFeedback}</p>}
       
       <div className="flex items-center space-x-2">
         <button
