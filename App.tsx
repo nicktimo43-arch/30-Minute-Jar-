@@ -1,37 +1,87 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { NoteType, Task, TimerState, ActiveTask } from './types';
-import Statistics from './components/Statistics';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Task, TimerState, ActiveTask } from './types';
 import Jar from './components/Jar';
-import StickyNote from './components/StickyNote';
 import TimerScreen from './components/TimerScreen';
-import PauseOverlay from './components/PauseOverlay';
+import MainTaskNote from './components/MainTaskNote';
+import TaskPlanner from './components/TaskPlanner';
+import NextUp from './components/NextUp';
 
 const TOTAL_TIME = 30 * 60; // 30 minutes in seconds
-const TASKS_STORAGE_KEY = 'focusJarTasks';
+const COMPLETED_TASKS_STORAGE_KEY = 'focusJarCompletedTasks';
+const PLANNED_TASKS_STORAGE_KEY = 'focusJarPlannedTasks';
 const TIMER_STATE_STORAGE_KEY = 'focusJarTimerState';
+const MAIN_TASK_STORAGE_KEY = 'focusJarMainTask';
+const MONEY_STORAGE_KEY = 'focusJarMoney';
 
 export default function App(): React.ReactElement {
-  const [tasks, setTasks] = useState<Task[]>(() => {
+  const [completedTasks, setCompletedTasks] = useState<Task[]>(() => {
     try {
-      const savedTasks = window.localStorage.getItem(TASKS_STORAGE_KEY);
+      const savedTasks = window.localStorage.getItem(COMPLETED_TASKS_STORAGE_KEY);
       return savedTasks ? JSON.parse(savedTasks) : [];
     } catch (error) {
-      console.error("Failed to parse tasks from localStorage:", error);
+      console.error("Failed to parse completed tasks from localStorage:", error);
+      return [];
+    }
+  });
+  
+  const [plannedTasks, setPlannedTasks] = useState<Task[]>(() => {
+    try {
+      const savedTasks = window.localStorage.getItem(PLANNED_TASKS_STORAGE_KEY);
+      return savedTasks ? JSON.parse(savedTasks) : [];
+    } catch (error) {
+      console.error("Failed to parse planned tasks from localStorage:", error);
       return [];
     }
   });
 
-  const [inputNoteText, setInputNoteText] = useState('');
-  const [outputNoteText, setOutputNoteText] = useState('');
+  const [moneyEarned, setMoneyEarned] = useState<number>(() => {
+    try {
+      const savedMoney = window.localStorage.getItem(MONEY_STORAGE_KEY);
+      return savedMoney ? JSON.parse(savedMoney) : 0;
+    } catch (error) {
+      console.error("Failed to parse money from localStorage:", error);
+      return 0;
+    }
+  });
+
+  const [mainTask, setMainTask] = useState<string>(() => {
+    try {
+      const savedMainTask = window.localStorage.getItem(MAIN_TASK_STORAGE_KEY);
+      return savedMainTask ? JSON.parse(savedMainTask) : '';
+    } catch (error) {
+      console.error("Failed to load main task from localStorage:", error);
+      return '';
+    }
+  });
+
   const [timerState, setTimerState] = useState<TimerState>('idle');
   const [timeRemaining, setTimeRemaining] = useState(TOTAL_TIME);
   const [activeTask, setActiveTask] = useState<ActiveTask | null>(null);
-  const [errorMessage, setErrorMessage] = useState('');
   
   const [startTime, setStartTime] = useState<Date | null>(null);
   const [endTime, setEndTime] = useState<Date | null>(null);
   const [pauseStartTime, setPauseStartTime] = useState<number | null>(null);
   const [totalPausedDuration, setTotalPausedDuration] = useState(0);
+  
+  const [isEditingPlan, setIsEditingPlan] = useState(false);
+
+  // Save main task to localStorage
+  useEffect(() => {
+    try {
+        window.localStorage.setItem(MAIN_TASK_STORAGE_KEY, JSON.stringify(mainTask));
+    } catch (error) {
+        console.error("Failed to save main task to localStorage:", error);
+    }
+  }, [mainTask]);
+  
+  // Save money to localStorage
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(MONEY_STORAGE_KEY, JSON.stringify(moneyEarned));
+    } catch (error) {
+      console.error("Failed to save money to localStorage:", error);
+    }
+  }, [moneyEarned]);
 
   // Load timer state from localStorage on initial mount
   useEffect(() => {
@@ -50,7 +100,9 @@ export default function App(): React.ReactElement {
         if (rehydratedEndTime && rehydratedEndTime.getTime() < Date.now()) {
           // Timer finished while the tab was closed. Complete the task.
           if (savedState.activeTask) {
-            setTasks((prevTasks) => [...prevTasks, { id: Date.now(), type: savedState.activeTask.type, text: savedState.activeTask.text }]);
+            setCompletedTasks((prevTasks) => [...prevTasks, { id: savedState.activeTask.id, type: savedState.activeTask.type, text: savedState.activeTask.text }]);
+            // Also remove from planned tasks
+            setPlannedTasks((prev) => prev.filter(task => task.id !== savedState.activeTask.id));
           }
           window.localStorage.removeItem(TIMER_STATE_STORAGE_KEY);
         } else {
@@ -75,7 +127,7 @@ export default function App(): React.ReactElement {
       console.error("Failed to load timer state:", error);
       window.localStorage.removeItem(TIMER_STATE_STORAGE_KEY);
     }
-  }, [setTasks]); // Run only once on mount, setTasks is a stable function
+  }, []); // Run only once on mount
 
   // Save timer state to localStorage whenever it changes
   useEffect(() => {
@@ -103,16 +155,41 @@ export default function App(): React.ReactElement {
 
   useEffect(() => {
     try {
-      window.localStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify(tasks));
+      window.localStorage.setItem(COMPLETED_TASKS_STORAGE_KEY, JSON.stringify(completedTasks));
     } catch (error) {
-      console.error("Failed to save tasks to localStorage:", error);
+      console.error("Failed to save completed tasks to localStorage:", error);
     }
-  }, [tasks]);
+  }, [completedTasks]);
+  
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(PLANNED_TASKS_STORAGE_KEY, JSON.stringify(plannedTasks));
+    } catch (error) {
+      console.error("Failed to save planned tasks to localStorage:", error);
+    }
+  }, [plannedTasks]);
 
-  const handlePlay = useCallback((type: NoteType, text: string) => {
-    if (text.trim()) {
+  const handleSellGumball = useCallback(() => {
+    if (completedTasks.length > 0) {
+      setMoneyEarned(prevMoney => prevMoney + 1);
+      setCompletedTasks(prevTasks => prevTasks.slice(1));
+    }
+  }, [completedTasks]);
+
+  const handleSavePlan = useCallback((newTasks: Task[]) => {
+    const tasksWithGuaranteedIds = newTasks.map((task, index) => ({
+      ...task,
+      id: task.id || Date.now() + index,
+    }));
+    setPlannedTasks(tasksWithGuaranteedIds);
+    setIsEditingPlan(false);
+  }, []);
+  
+  const handlePlay = useCallback(() => {
+    if (plannedTasks.length > 0) {
+      const nextTask = plannedTasks[0];
       const now = new Date();
-      setActiveTask({ type, text });
+      setActiveTask(nextTask);
       setTimerState('running');
       setTimeRemaining(TOTAL_TIME);
       setStartTime(now);
@@ -120,12 +197,12 @@ export default function App(): React.ReactElement {
       setPauseStartTime(null);
       setTotalPausedDuration(0);
     }
-  }, []);
+  }, [plannedTasks]);
 
   const handlePause = useCallback(() => {
     if (timerState === 'running') {
       setTimerState('paused');
-      setPauseStartTime(Date.now()); // Record when pause starts
+      setPauseStartTime(Date.now());
     }
   }, [timerState]);
 
@@ -135,7 +212,6 @@ export default function App(): React.ReactElement {
       const newTotalPausedDuration = totalPausedDuration + pauseDuration;
       setTotalPausedDuration(newTotalPausedDuration);
       
-      // Recalculate endTime to account for the pause
       const newEndTime = new Date(startTime.getTime() + TOTAL_TIME * 1000 + newTotalPausedDuration);
       setEndTime(newEndTime);
 
@@ -144,25 +220,24 @@ export default function App(): React.ReactElement {
     }
   }, [timerState, pauseStartTime, startTime, totalPausedDuration]);
 
-  const handleDone = useCallback(() => {
-    if (timeRemaining > 0) {
-      setErrorMessage('You are not done, please finish your tasks.');
-      setTimeout(() => setErrorMessage(''), 3000);
-    }
-  }, [timeRemaining]);
+  const handleCancel = useCallback(() => {
+    setActiveTask(null);
+    setTimerState('idle');
+    setTimeRemaining(TOTAL_TIME);
+    setStartTime(null);
+    setEndTime(null);
+  }, []);
 
   const resetToIdle = useCallback(() => {
-      if(activeTask?.type === 'input') {
-          setInputNoteText('');
-      } else {
-          setOutputNoteText('');
-      }
       setActiveTask(null);
       setTimerState('idle');
       setTimeRemaining(TOTAL_TIME);
       setStartTime(null);
       setEndTime(null);
-  }, [activeTask]);
+  }, []);
+  
+  const handleEditPlan = useCallback(() => setIsEditingPlan(true), []);
+  const handleCancelEdit = useCallback(() => setIsEditingPlan(false), []);
 
   useEffect(() => {
     let interval: number | undefined;
@@ -173,7 +248,8 @@ export default function App(): React.ReactElement {
           if (prevTime <= 1) {
             clearInterval(interval);
             if (activeTask) {
-              setTasks((prevTasks) => [...prevTasks, { id: Date.now(), type: activeTask.type, text: activeTask.text }]);
+              setCompletedTasks((prevTasks) => [...prevTasks, { id: activeTask.id, type: activeTask.type, text: activeTask.text }]);
+              setPlannedTasks((prev) => prev.filter(task => task.id !== activeTask.id));
             }
             resetToIdle();
             return 0;
@@ -184,58 +260,61 @@ export default function App(): React.ReactElement {
     }
     
     return () => clearInterval(interval);
-  }, [timerState, activeTask, resetToIdle, setTasks]);
-
-
-  const memoizedStats = useMemo(() => <Statistics tasks={tasks} />, [tasks]);
-
+  }, [timerState, activeTask, resetToIdle]);
+  
   const isTaskActive = timerState !== 'idle';
+  const showPlanner = plannedTasks.length === 0 || isEditingPlan;
 
   return (
-    <div className="bg-slate-100 min-h-screen font-sans text-gray-800 flex flex-col items-center justify-center p-4 relative overflow-hidden">
-      {memoizedStats}
-      
-      {errorMessage && (
-        <div className="absolute top-5 bg-red-500 text-white py-2 px-4 rounded-lg shadow-lg animate-bounce">
-          {errorMessage}
-        </div>
-      )}
+    <div className="bg-white h-screen overflow-hidden font-sans text-black w-full flex flex-col items-center p-4">
+       <div className="fixed top-4 right-4 z-20 bg-white rounded-md px-3 py-1 border border-gray-300">
+          <p className="text-md font-semibold text-black flex items-center">
+              ${moneyEarned}
+          </p>
+      </div>
 
-      {isTaskActive && activeTask && startTime && endTime ? (
+      <main className="w-full max-w-sm mx-auto flex flex-col items-center flex-grow justify-around">
+        <div className="w-full flex items-center justify-between space-x-4">
+          <div className="flex-1">
+            <MainTaskNote 
+                text={mainTask}
+                onTextChange={setMainTask}
+                isTaskActive={isTaskActive}
+            />
+          </div>
+          <Jar tasks={completedTasks} onSell={handleSellGumball} />
+        </div>
+
+        <div className={`w-full transition-opacity duration-300 ${isTaskActive ? 'opacity-25 pointer-events-none' : 'opacity-100'}`}>
+          {showPlanner ? (
+             <TaskPlanner
+              initialTasks={plannedTasks}
+              onSavePlan={handleSavePlan}
+              onCancelEdit={plannedTasks.length > 0 && isEditingPlan ? handleCancelEdit : undefined}
+            />
+          ) : (
+            <NextUp
+              task={plannedTasks[0]}
+              queue={plannedTasks.slice(1)}
+              onPlay={handlePlay}
+              isAnotherTaskActive={isTaskActive}
+              onEditPlan={handleEditPlan}
+            />
+          )}
+        </div>
+      </main>
+
+      {isTaskActive && activeTask && (
         <TimerScreen
           timeRemaining={timeRemaining}
           totalTime={TOTAL_TIME}
+          timerState={timerState}
           onPause={handlePause}
-          onDone={handleDone}
+          onResume={handleResume}
+          onCancel={handleCancel}
           taskText={activeTask.text}
-          startTime={startTime}
-          endTime={endTime}
         />
-      ) : (
-        <>
-          <Jar tasks={tasks} />
-          <div className="flex flex-row items-start justify-center gap-8 mt-8">
-            <StickyNote
-              noteType="input"
-              color="bg-yellow-200"
-              text={inputNoteText}
-              onTextChange={setInputNoteText}
-              onPlay={handlePlay}
-              isAnotherTaskActive={isTaskActive}
-            />
-            <StickyNote
-              noteType="output"
-              color="bg-pink-200"
-              text={outputNoteText}
-              onTextChange={setOutputNoteText}
-              onPlay={handlePlay}
-              isAnotherTaskActive={isTaskActive}
-            />
-          </div>
-        </>
       )}
-
-      {timerState === 'paused' && <PauseOverlay onResume={handleResume} />}
     </div>
   );
 }

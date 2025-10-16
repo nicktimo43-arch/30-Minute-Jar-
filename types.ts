@@ -9,6 +9,7 @@ export interface Task {
 }
 
 export interface ActiveTask {
+  id: number;
   type: NoteType;
   text: string;
 }
