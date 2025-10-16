@@ -13,3 +13,10 @@ export interface ActiveTask {
   type: NoteType;
   text: string;
 }
+
+export interface SyncPayload {
+    mainTask: string;
+    completedTasks: Task[];
+    plannedTasks: Task[];
+    moneyEarned: number;
+}

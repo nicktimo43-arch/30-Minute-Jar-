@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Task, TimerState, ActiveTask } from './types';
+import { Task, TimerState, ActiveTask, SyncPayload } from './types';
 import Jar from './components/Jar';
 import TimerScreen from './components/TimerScreen';
 import MainTaskNote from './components/MainTaskNote';
 import TaskPlanner from './components/TaskPlanner';
 import NextUp from './components/NextUp';
+import QrCodeModal from './components/QrCodeModal';
+import QrScanner from './components/QrScanner';
 
 const TOTAL_TIME = 30 * 60; // 30 minutes in seconds
 const COMPLETED_TASKS_STORAGE_KEY = 'focusJarCompletedTasks';
@@ -64,6 +66,8 @@ export default function App(): React.ReactElement {
   const [totalPausedDuration, setTotalPausedDuration] = useState(0);
   
   const [isEditingPlan, setIsEditingPlan] = useState(false);
+  const [showQrModal, setShowQrModal] = useState(false);
+  const [showQrScanner, setShowQrScanner] = useState(false);
 
   // Save main task to localStorage
   useEffect(() => {
@@ -239,6 +243,23 @@ export default function App(): React.ReactElement {
   const handleEditPlan = useCallback(() => setIsEditingPlan(true), []);
   const handleCancelEdit = useCallback(() => setIsEditingPlan(false), []);
 
+  const handleQrScanSuccess = useCallback((data: string) => {
+    try {
+        const payload: SyncPayload = JSON.parse(data);
+        if (window.confirm("Syncing will replace all data on this device. Continue?")) {
+            setMainTask(payload.mainTask);
+            setCompletedTasks(payload.completedTasks);
+            setPlannedTasks(payload.plannedTasks);
+            setMoneyEarned(payload.moneyEarned);
+        }
+    } catch (e) {
+        console.error("Failed to parse QR code data:", e);
+        alert("Invalid QR code format.");
+    } finally {
+        setShowQrScanner(false);
+    }
+  }, []);
+
   useEffect(() => {
     let interval: number | undefined;
 
@@ -265,13 +286,29 @@ export default function App(): React.ReactElement {
   const isTaskActive = timerState !== 'idle';
   const showPlanner = plannedTasks.length === 0 || isEditingPlan;
 
+  const syncPayload: SyncPayload = { mainTask, completedTasks, plannedTasks, moneyEarned };
+
   return (
     <div className="bg-white h-screen overflow-hidden font-sans text-black w-full flex flex-col items-center p-4">
-       <div className="fixed top-4 right-4 z-20 bg-white rounded-md px-3 py-1 border border-gray-300">
-          <p className="text-md font-semibold text-black flex items-center">
-              ${moneyEarned}
-          </p>
+       <div className="fixed top-4 right-4 z-20 flex items-center space-x-2">
+            <div className="bg-white rounded-md px-3 py-1 border border-gray-300">
+                <p className="text-md font-semibold text-black flex items-center">
+                    ${moneyEarned}
+                </p>
+            </div>
+            <div className="relative group">
+                 <button className="bg-white rounded-md p-2 border border-gray-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M4.5 2A2.5 2.5 0 0 0 2 4.5v2.958a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5V4.5a1.5 1.5 0 0 1 1.5-1.5h2.958a.5.5 0 0 0 .5-.5v-1a.5.5 0 0 0-.5-.5H4.5ZM10 3.5a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5v1a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5v-1ZM11.5 2a.5.5 0 0 0-.5.5v1a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5v-1a.5.5 0 0 0-.5-.5h-1ZM2 11.5a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5v-1a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5v1Zm2.5.5a.5.5 0 0 0 .5-.5v-1a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5v1a.5.5 0 0 0 .5.5h1ZM8.5 12a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5v-1a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5v1Zm2.5 0a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5v-1a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5v1ZM8.5 10a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5v-1a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5v1Zm2.5 0a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5v-1a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5v1Zm-7-2.5a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5v-1a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5v1ZM6 8.5a.5.5 0 0 0 .5-.5v-1a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5v1a.5.5 0 0 0 .5.5h1Z"/>
+                    </svg>
+                </button>
+                <div className="absolute right-0 mt-2 w-40 bg-white border border-gray-300 rounded-md shadow-lg opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none group-focus-within:pointer-events-auto group-hover:pointer-events-auto">
+                    <button onClick={() => setShowQrModal(true)} className="block w-full text-left px-4 py-2 text-sm text-black hover:bg-gray-100">Show My Code</button>
+                    <button onClick={() => setShowQrScanner(true)} className="block w-full text-left px-4 py-2 text-sm text-black hover:bg-gray-100">Scan Code</button>
+                </div>
+            </div>
       </div>
+
 
       <main className="w-full max-w-sm mx-auto flex flex-col items-center flex-grow justify-around">
         <div className="w-full flex items-center justify-between space-x-4">
@@ -315,6 +352,8 @@ export default function App(): React.ReactElement {
           taskText={activeTask.text}
         />
       )}
+      {showQrModal && <QrCodeModal data={JSON.stringify(syncPayload)} onClose={() => setShowQrModal(false)} />}
+      {showQrScanner && <QrScanner onScanSuccess={handleQrScanSuccess} onCancel={() => setShowQrScanner(false)} />}
     </div>
   );
 }
