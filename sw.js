@@ -1,10 +1,23 @@
-const CACHE_NAME = 'focus-jar-cache-v1';
+const CACHE_NAME = 'focus-jar-cache-v2';
 const urlsToCache = [
+  // Core files
   '/',
   '/index.html',
   '/index.tsx',
-  // NOTE: You would add other static assets here like CSS, images, etc.
-  // The current setup uses CDN for react, so we don't cache those.
+  '/App.tsx',
+  '/types.ts',
+  
+  // Components
+  '/components/Jar.tsx',
+  '/components/MainTaskNote.tsx',
+  '/components/NextUp.tsx',
+  '/components/TaskPlanner.tsx',
+  '/components/TimerScreen.tsx',
+  
+  // PWA assets
+  '/manifest.json',
+  '/icon-192x192.png',
+  '/icon-512x512.png',
 ];
 
 // Install a service worker
