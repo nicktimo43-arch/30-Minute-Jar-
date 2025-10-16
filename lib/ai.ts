@@ -1,6 +1,21 @@
+
 import { GoogleGenAI, Type } from '@google/genai';
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+// Safely initialize the AI client only if the API key is available.
+// This prevents the app from crashing in browser environments where `process` is not defined.
+let ai: GoogleGenAI | null = null;
+try {
+    // Vercel and other platforms might not expose `process` to the client.
+    // This check prevents a ReferenceError.
+    if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
+        ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    } else {
+        console.warn("Google AI API key not found. AI features will be disabled. Make sure to set up your environment variables.");
+    }
+} catch (error) {
+    console.error("Error initializing GoogleGenAI:", error);
+}
+
 
 const responseSchema = {
     type: Type.OBJECT,
@@ -33,6 +48,16 @@ export const getTaskCorrection = async (
     taskType: 'input' | 'output'
 ): Promise<AITaskResponse> => {
     
+    // If the AI client failed to initialize, provide a default permissive response.
+    if (!ai) {
+        console.log("AI is not available. Skipping task correction.");
+        return {
+            isRelevant: true,
+            feedback: '',
+            suggestedText: currentTaskText,
+        };
+    }
+
     const taskTypeDescription = taskType === 'input' ? 'Consume' : 'Produce';
 
     const systemInstruction = `You are a strict but helpful productivity coach. The user's main goal is: "${highPriorityTask}".
